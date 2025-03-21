@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSFiddle rg7wu35p</title>
+
+  <style>
+    
+  </style>
+
+  
+</head>
+<body>
+  <!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>单词消消乐</title>
+  <style>
+    /* 梦幻风格主题 */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background: url('https://source.unsplash.com/1600x900/?dreamy') no-repeat center center fixed;
+      background-size: cover;
+      background-color: #e1f5fe;
+      color: #4a148c;
+    }
+    .container {
+      position: relative; /* 用于右上角计数器 */
+      margin: auto;
+      max-width: 800px;
+      padding: 20px;
+      border-radius: 10px;
+      background: rgba(255,240,245,0.95);
+    }
+    /* 右上角通过计数 */
+    #passed-counter {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #4a148c;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+    /* 学习模式卡片：两行显示 */
+    .card {
+      padding: 15px;
+      border: 2px solid #ce93d8;
+      border-radius: 5px;
+      background: #f3e5f5;
+      cursor: pointer;
+      transition: background 0.3s;
+      line-height: 1.5;
+    }
+    .card.selected {
+      background: #f8bbd0;
+    }
+    /* 使用 visibility 隐藏匹配的卡片，保持布局不变 */
+    .card.matched {
+      visibility: hidden;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      border: none;
+      background: #ab47bc;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #9c27b0;
+    }
+    /* 错误单词显示区 */
+    #error-display {
+      margin: 20px 0;
+      padding: 15px;
+      border: 2px solid #ce93d8;
+      border-radius: 8px;
+      background: #f3e5f5;
+      color: #4a148c;
+      display: none;
+      text-align: left;
+    }
+    /* 学习模式顶部按钮 */
+    .hide {
+      display: none;
+    }
+    /* 返回按钮区域：居中显示 */
+    #back-btn-area {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>单词消消乐</h1>
+    <!-- 右上角通过计数器 -->
+    <div id="passed-counter">通过: 0</div>
+    <!-- 学习模式顶部按钮（仅在学习模式下显示） -->
+    <div id="mode-buttons">
+      <button id="refresh-btn" onclick="refreshLearningMode()">刷新单词</button>
+      <button id="start-btn" onclick="startGame()">开始游戏</button>
+    </div>
+    <!-- 学习模式区域 -->
+    <div id="learning-mode">
+      <!-- 学习模式单词网格由脚本生成 -->
+    </div>
+    <!-- 游戏模式区域 -->
+    <div id="game-mode" style="display:none;">
+      <!-- 错误单词显示区 -->
+      <div id="error-display"></div>
+      <!-- 游戏卡片区域 -->
+      <div id="game-grid"></div>
+      <!-- 返回学习模式按钮区域 -->
+      <div id="back-btn-area"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ============ 全局变量 ============ */
+    // 主词库：包含第一部分和第二部分单词
+    const masterWords = [
+      // 第一部分单词
+      { zh: "一（个，件……）", en: "a" },
+      { zh: "有足够的（钱 / 时间）做（某事）", en: "afford" },
+      { zh: "少量（的），一点", en: "a bit (of)" },
+      { zh: "害怕的", en: "afraid" },
+      { zh: "一点儿", en: "a bit" },
+      { zh: "非洲", en: "Africa" },
+      { zh: "一瓶……", en: "a bottle of" },
+      { zh: "在…… 以后，在…… 后面", en: "after" },
+      { zh: "一些，几个", en: "a few" },
+      { zh: "过了一会儿", en: "after a while" },
+      { zh: "一（玻璃）杯", en: "a glass of" },
+      { zh: "课后", en: "after class" },
+      { zh: "一种，一类", en: "a kind of" },
+      { zh: "放学后，下课后", en: "after school" },
+      { zh: "一点，少量", en: "a little" },
+      { zh: "下午，午后", en: "afternoon" },
+      { zh: "许多，很多", en: "a lot of" },
+      { zh: "又，再", en: "again" },
+      { zh: "非常", en: "a lot" },
+      { zh: "再三地，一再地，反复地", en: "again and again" },
+      { zh: "刚才", en: "a moment ago" },
+      { zh: "片刻之后", en: "a moment later" },
+      { zh: "与... 对抗，对着", en: "against" },
+      { zh: "一对，一双", en: "a pair of" },
+      { zh: "年龄", en: "age" },
+      { zh: "一片（一张、块）", en: "a piece of" },
+      { zh: "以前", en: "ago" },
+      { zh: "名胜", en: "a place of interest" },
+      { zh: "售货员，店员", en: "a shop assistant" },
+      { zh: "一台电视", en: "a TV set" },
+      { zh: "天空，空气", en: "air" },
+      { zh: "浪费（白费）时间", en: "a waste of time" },
+      { zh: "航空站，飞机场", en: "airport" },
+      { zh: "午前，上午", en: "a.m." },
+      { zh: "相似的，相像的", en: "alike" },
+      { zh: "有能力的，能干的", en: "able" },
+      { zh: "整个，所有的", en: "all" },
+      { zh: "大约", en: "about" },
+      { zh: "都，完全，全体全部", en: "all" },
+      { zh: "关于，对于", en: "about" },
+      { zh: "独立，单独", en: "all by oneself" },
+      { zh: "在... 上面", en: "above" },
+      { zh: "一整天，一天到晚", en: "all day" },
+      { zh: "到国外；在国外", en: "abroad" },
+      { zh: "各种各样的", en: "all kinds of" },
+      { zh: "事故，灾难", en: "accident" },
+      { zh: "遍及", en: "all over" },
+      { zh: "穿过，横过", en: "across" },
+      { zh: "好，行，不错", en: "all right" },
+      { zh: "积极的", en: "active" },
+      { zh: "仍然，还是", en: "all the same" },
+      { zh: "活动", en: "activity" },
+      { zh: "一直，始终", en: "all the time" },
+      { zh: "广告", en: "ad" },
+      { zh: "一年到头", en: "all the year round" },
+      { zh: "地址", en: "address" },
+      { zh: "允许，准许", en: "allow" },
+      { zh: "飞机", en: "aeroplane" },
+      { zh: "几乎，差不多", en: "almost" },
+      { zh: "独自的，单独的", en: "alone" },
+      { zh: "沿着，顺着；一起，一道", en: "along" },
+      { zh: "在.. 周围；环绕着", en: "around" },
+      { zh: "已经", en: "already" },
+      { zh: "到达，抵达某地", en: "arrive" },
+      { zh: "也", en: "also" },
+      { zh: "艺术，艺术品", en: "art" },
+      { zh: "虽然；尽管", en: "although" },
+      { zh: "画家，艺术家", en: "artist" },
+      { zh: "总是，一直，经常", en: "always" },
+      { zh: "是", en: "am" },
+      { zh: "使... 大为惊讶，使惊", en: "amaze" },
+      { zh: "令人惊奇的", en: "amazing" },
+      { zh: "美国", en: "America" },
+      { zh: "长达...", en: "as long as" },
+      { zh: "美国，美国人 (的)", en: "American" },
+      { zh: "尽可能早地；尽快", en: "as soon as possible" },
+      { zh: "在...... 当中", en: "among" },
+      { zh: "一…… 就", en: "as soon as" },
+      { zh: "一（个、件）", en: "an" },
+      { zh: "像平常一样", en: "as usual" },
+      { zh: "和，又，而", en: "and" },
+      { zh: "又，同样地", en: "as well" },
+      { zh: "等等", en: "and so on" },
+      { zh: "与... 一样", en: "as...as" },
+      { zh: "天使，守护神", en: "angel" },
+      { zh: "问", en: "ask" },
+      { zh: "发怒的，生气的", en: "angry" },
+      { zh: "请求，询问", en: "ask for" },
+      { zh: "动物", en: "animal" },
+      { zh: "睡着的，熟睡的", en: "asleep" },
+      { zh: "另一个 (的)，又一个 (的)", en: "another" },
+      { zh: "助手，助理", en: "assistant" },
+      { zh: "在", en: "at" },
+      { zh: "（用否定句）一点也不", en: "at all" },
+      { zh: "早餐时", en: "at breakfast" },
+      { zh: "起先，首先", en: "at first" },
+      { zh: "在家", en: "at home" },
+      { zh: "终于，最后", en: "at last" },
+      { zh: "至少，起码", en: "at least" },
+      { zh: "任何事 (物)", en: "anything" },
+      { zh: "在半夜", en: "at midnight" },
+      { zh: "任何地方", en: "anywhere" },
+      { zh: "在晚上，在夜里", en: "at night" },
+      { zh: "出现，露面", en: "appear" },
+      { zh: "立刻，马上", en: "at once" },
+      { zh: "苹果", en: "apple" },
+      // 第二部分单词
+      { zh: "在学校", en: "at school" },
+      { zh: "四月", en: "April" },
+      { zh: "在大海上", en: "at sea" },
+      { zh: "是", en: "are" },
+      { zh: "在... 岁时", en: "at the age of" },
+      { zh: "are not 的缩写形式", en: "aren't" },
+      { zh: "起初，开始", en: "at the beginning of" },
+      { zh: "手臂；胳膊", en: "arm" },
+      { zh: "在... 结尾，到.. 尽头", en: "at the end of" },
+      { zh: "在... 的最前", en: "at the head of" },
+      { zh: "棒球", en: "baseball" },
+      { zh: "此刻", en: "at the moment" },
+      { zh: "（电脑）初学者通用符号指令", en: "BASIC" },
+      { zh: "同时", en: "at the same time" },
+      { zh: "有时，偶尔", en: "at times" },
+      { zh: "篮子", en: "basket" },
+      { zh: "在工作", en: "at work" },
+      { zh: "篮球", en: "basketball" },
+      { zh: "攻击，袭击", en: "attack" },
+      { zh: "是，成为", en: "be" },
+      { zh: "吸引", en: "attract" },
+      { zh: "能，会", en: "be able to" },
+      { zh: "听众", en: "audience" },
+      { zh: "害怕", en: "be afraid of" },
+      { zh: "八月", en: "August" },
+      { zh: "对.. 感到惊讶", en: "be amazed at" },
+      { zh: "姨母，舅母，姑母，伯母，婶", en: "aunt" },
+      { zh: "对 (某人) 发脾气", en: "be angry with" },
+      { zh: "醒着的", en: "be awake" },
+      { zh: "澳大利亚", en: "Australia" },
+      { zh: "出生于", en: "be born" },
+      { zh: "澳大利亚人", en: "Australian" },
+      { zh: "忙于做....", en: "be busy doing" },
+      { zh: "秋天，秋季", en: "autumn" },
+      { zh: "对... 感到兴奋", en: "be excited about" },
+      { zh: "清醒的", en: "awake" },
+      { zh: "因... 而有名的", en: "be famous for" },
+      { zh: "离开", en: "away" },
+      { zh: "厌倦", en: "be fed up with" },
+      { zh: "婴儿", en: "baby" },
+      { zh: "用... 充满", en: "be filled with" },
+      { zh: "回 (原处)；向后", en: "back" },
+      { zh: "充满.... 的", en: "be full (of)" },
+      { zh: "背部，后面", en: "back" },
+      { zh: "在... 方面 (学得，做得) 好；善于", en: "be good at" },
+      { zh: "坏的", en: "bad" },
+      { zh: "对... 感兴趣", en: "be interested in" },
+      { zh: "严重地，恶劣地", en: "badly" },
+      { zh: "迟到", en: "be late for" },
+      { zh: "书包", en: "bag" },
+      { zh: "在... 生产或制造", en: "be made in" },
+      { zh: "面包师", en: "baker" },
+      { zh: "由.. 组成，由... 构成", en: "be made of" },
+      { zh: "球", en: "ball" },
+      { zh: "对... 感到满意", en: "be pleased with" },
+      { zh: "竹子", en: "bamboo" },
+      { zh: "以...... 自豪 (兴奋)", en: "be proud of" },
+      { zh: "香蕉", en: "banana" },
+      { zh: "用", en: "be used for" },
+      { zh: "乐队", en: "band" },
+      { zh: "迷失 (道路)", en: "be/get lost" },
+      { zh: "猛敲，猛撞，砰砰作响", en: "bang" },
+      { zh: "海 (河，湖) 滩", en: "beach" },
+      { zh: "（海，河，湖的）岸，堤", en: "bank" },
+      { zh: "熊", en: "bear" },
+      { zh: "银行", en: "bank" },
+      { zh: "打败，敲打", en: "beat" },
+      { zh: "谷仓，堆物房；马房，牛舍", en: "barn" },
+      { zh: "美丽的，漂亮的", en: "beautiful" },
+      { zh: "以作根据，基于", en: "base" },
+      { zh: "因为", en: "because" },
+      { zh: "以 (为) 根据", en: "base on" },
+      { zh: "变得，变成，成为", en: "become" },
+      { zh: "床", en: "bed" },
+      { zh: "瞎的，盲的", en: "blind" },
+      { zh: "卧室", en: "bedroom" },
+      { zh: "女衬衫", en: "blouse" },
+      { zh: "牛肉", en: "beef" },
+      { zh: "吹", en: "blow" },
+      { zh: "袖珍无线电传呼机，电话呼叫机", en: "beeper" },
+      { zh: "蓝色 (的)", en: "blue" },
+      { zh: "啤酒", en: "beer" },
+      { zh: "船", en: "boat" },
+      { zh: "划船", en: "boat" },
+      { zh: "在... 之前，以前", en: "before" },
+      { zh: "划船", en: "boating" },
+      { zh: "不久以后", en: "before long" },
+      { zh: "身体", en: "body" },
+      { zh: "恳求，乞求", en: "beg" },
+      { zh: "书", en: "book" },
+      { zh: "请原谅，对不起", en: "beg one's pardon" },
+      { zh: "预定 (戏票，车票等)", en: "book" },
+      { zh: "开始，着手", en: "begin" },
+      { zh: "书签", en: "bookmark" },
+      { zh: "开始，开端", en: "beginning" },
+      { zh: "书店", en: "bookshop" },
+      { zh: "在... 后面", en: "behind" },
+      { zh: "长统鞋", en: "boot" },
+      { zh: "相信，认为", en: "believe" },
+      { zh: "令人厌烦的", en: "boring" },
+      { zh: "在... 下，低于", en: "below" },
+      { zh: "出生", en: "born" },
+      { zh: "柏林", en: "Berlin" },
+      { zh: "借", en: "borrow" },
+      { zh: "在.. 旁边", en: "beside" },
+      { zh: "波士顿", en: "Boston" },
+      { zh: "最好的 (地)", en: "best" },
+      { zh: "两个 (人 -..) 都", en: "both" },
+      { zh: "畅销货 (书)", en: "best-seller" },
+      { zh: "…… 和... 都", en: "both...and..." },
+      { zh: "更好的", en: "better" },
+      { zh: "瓶", en: "bottle" },
+      { zh: "在 (两者) 之间", en: "between" },
+      { zh: "碗", en: "bowl" },
+      { zh: "大的", en: "big" },
+      { zh: "盒子，箱子", en: "box" },
+      { zh: "自行车", en: "bike" },
+      { zh: "男孩", en: "boy" },
+      { zh: "帐单，清单，纸币", en: "bill" },
+      { zh: "巴西", en: "Brazil" },
+      { zh: "十亿", en: "billion" },
+      { zh: "面包", en: "bread" },
+      { zh: "生物 (学)", en: "biology" },
+      { zh: "（课间）休息，中断", en: "break" },
+      { zh: "鸟", en: "bird" },
+      { zh: "折断，断裂，破碎", en: "break" },
+      { zh: "生日", en: "birthday" },
+      { zh: "早餐", en: "breakfast" },
+      { zh: "一点儿，小片", en: "bit" },
+      { zh: "呼吸", en: "breathe" },
+      { zh: "黑色的", en: "black" },
+      { zh: "桥", en: "bridge" },
+      { zh: "黑板", en: "blackboard" },
+      { zh: "桥牌", en: "bridge" },
+      { zh: "羊叫 (声)", en: "bleat" },
+      { zh: "明亮的，灿烂的", en: "bright" },
+      { zh: "明亮地，闪亮地", en: "brightly" },
+      { zh: "带来，拿来", en: "bring" },
+      { zh: "笼 (子)，鸟笼", en: "cage" },
+      { zh: "英国，不列颠", en: "Britain" },
+      { zh: "蛋糕，饼，糕", en: "cake" },
+      { zh: "小册子", en: "brochure" },
+      { zh: "称呼，叫喊，打电话给；电话", en: "call" },
+      { zh: "（动词 break 的过去时）折断；打破", en: "broke" },
+      { zh: "能，可以，会", en: "can" },
+      { zh: "弄坏了的", en: "broken" },
+      { zh: "加拿大", en: "Canada" },
+      { zh: "扫帚", en: "broom" },
+      { zh: "加拿大人", en: "Canadian" },
+      { zh: "兄，弟", en: "brother" },
+      { zh: "癌症", en: "cancer" },
+      { zh: "棕色 (的)，褐色 (的)", en: "brown" },
+      { zh: "蜡烛", en: "candle" },
+      { zh: "刷子，毛笔，画笔", en: "brush" },
+      { zh: "乘独木舟", en: "canoe" },
+      { zh: "建立，建造，建设", en: "build" },
+      { zh: "can not 的缩写形式", en: "can't" },
+      { zh: "建筑物", en: "building" },
+      { zh: "便帽，军帽", en: "cap" },
+      { zh: "公共汽车", en: "bus" },
+      { zh: "首都", en: "capital" },
+      { zh: "公共汽车站", en: "bus station" },
+      { zh: "（足球队等）队长", en: "captain" },
+      { zh: "商业，生意，事物", en: "business" },
+      { zh: "汽车，小汽车", en: "car" },
+      { zh: "商人", en: "businessman" },
+      { zh: "纸牌，卡片", en: "card" },
+      { zh: "忙的，繁忙的", en: "busy" },
+      { zh: "小心，照料，保护", en: "care" },
+      { zh: "但是", en: "but" },
+      { zh: "介意，在乎，关心", en: "care" },
+      { zh: "除了", en: "but" },
+      { zh: "小心的；仔细的", en: "careful" },
+      { zh: "黄油", en: "butter" },
+      { zh: "小心地；仔细地", en: "carefully" },
+      { zh: "按钮，纽扣", en: "button" },
+      { zh: "粗心的，大意的", en: "careless" },
+      { zh: "买", en: "buy" },
+      { zh: "胡萝卜", en: "carrot" },
+      { zh: "乘车 (船等)", en: "by" },
+      { zh: "携带；搬运；运送", en: "carry" },
+      { zh: "乘飞机", en: "by air" },
+      { zh: "坚持下去，继续下去", en: "carry on" },
+      { zh: "乘飞机", en: "by plane" },
+      { zh: "猫", en: "cat" },
+      { zh: "乘船", en: "by sea" },
+      { zh: "捉；抓住", en: "catch" },
+      { zh: "乘船", en: "by ship" },
+      { zh: "赶上", en: "catch up with" },
+      { zh: "到... 的时候", en: "by the time" },
+      { zh: "引起", en: "cause" },
+      { zh: "顺便说，顺便问一下", en: "by the way" },
+      { zh: "激光唱机", en: "CD player" },
+      { zh: "再见", en: "bye" },
+      { zh: "激光唱片 (缩写词)", en: "CD" },
+      { zh: "卷心菜，洋白菜", en: "cabbage" },
+      { zh: "庆祝", en: "celebrate" },
+      { zh: "（货币）分", en: "cent" },
+      { zh: "城市", en: "city" },
+      { zh: "中心", en: "centre（center）" },
+      { zh: "（学校里的）班级，年级", en: "class" },
+      { zh: "世纪，百年", en: "century" },
+      { zh: "同班同学", en: "classmate" },
+      { zh: "当然", en: "certainly" },
+      { zh: "教室", en: "classroom" },
+      { zh: "椅子", en: "chair" },
+      { zh: "干净的，清洁的", en: "clean" },
+      { zh: "挑战", en: "challenge" },
+      { zh: "把... 弄干净，擦干净", en: "clean" },
+      { zh: "机会", en: "chance" },
+      { zh: "清除，收拾干净", en: "clean up" },
+      { zh: "变化，变更，改变", en: "change" },
+      { zh: "清洁工", en: "cleaner" },
+      { zh: "海峡；航道；频道；波段", en: "channel" },
+      { zh: "清晰的；清楚的；明亮的", en: "clear" },
+      { zh: "图表", en: "chart" },
+      { zh: "清楚地", en: "clearly" },
+      { zh: "便宜的", en: "cheap" },
+      { zh: "聪明的，机灵的", en: "clever" },
+      { zh: "检查，核对", en: "check" },
+      { zh: "咔哒声；发出咔哒声", en: "click" },
+      { zh: "（购货时的）结账台，收银台", en: "check-out" },
+      { zh: "爬，攀登", en: "climb" },
+      { zh: "钟", en: "clock" },
+      { zh: "乳酪", en: "cheese" },
+      { zh: "关闭", en: "close" },
+      { zh: "化学（学）", en: "chemistry" },
+      { zh: "关着的", en: "closed" },
+      { zh: "国际象棋", en: "chess" },
+      { zh: "衣服", en: "clothes" },
+      { zh: "鸡，鸡肉", en: "chicken" },
+      { zh: "云", en: "cloud" },
+      { zh: "小孩", en: "child" },
+      { zh: "多云的，阴天的", en: "cloudy" },
+      { zh: "child 的复数形式", en: "children" },
+      { zh: "外套，上衣", en: "coat" },
+      { zh: "烟囱，烟筒", en: "chimney" },
+      { zh: "密码，符号", en: "code" },
+      { zh: "中国", en: "China" },
+      { zh: "咖啡", en: "coffee" },
+      { zh: "中国的，中国人的；中国人，汉语", en: "Chinese" },
+      { zh: "硬币", en: "coin" },
+      { zh: "（口语）炸士豆儿条", en: "chips" },
+      { zh: "（口语）可口可乐", en: "coke" },
+      { zh: "巧克力，巧克力糖", en: "chocolate" },
+      { zh: "冷的，寒冷的", en: "cold" },
+      { zh: "选择，挑选", en: "choose" },
+      { zh: "收集；搜集", en: "collect" },
+      { zh: "学院，高等专科学校", en: "college" },
+      { zh: "颜色；给... 着色", en: "colour" },
+      { zh: "（常用复数）筷子", en: "chopsticks" },
+      { zh: "颜色艳丽的", en: "colourful" },
+      { zh: "圣诞节", en: "Christmas" },
+      { zh: "电影院，电影", en: "cinema" },
+      { zh: "来", en: "come" },
+      { zh: "圈子，圆；环绕，绕行", en: "circle" },
+      { zh: "来，随同", en: "come along" },
+      { zh: "下来，落", en: "come down" },
+      { zh: "进来，进入", en: "come in" },
+      { zh: "来吧，跟着来，赶快；来；过来", en: "come on" },
+      { zh: "出来；（花）开，发（芽），出来", en: "come out" },
+      { zh: "过来，顺便来访", en: "come over" },
+      { zh: "苏醒，恢复知觉", en: "come to oneself" },
+      { zh: "实现", en: "come true" },
+      { zh: "找到；提出（答案，办法）", en: "come up with" },
+      
+      { zh: "舒适的；舒服的", en: "comfortable" },
+      { zh: "国家，乡村，郊外", en: "country" },
+      { zh: "公司", en: "company" },
+      { zh: "乡下，农村", en: "countryside" },
+      { zh: "比赛；竞争", en: "competition" },
+      { zh: "堂 (表) 兄弟，堂 (表) 姐妹", en: "cousin" },
+      { zh: "抱怨，发牢骚", en: "complain" },
+      { zh: "覆盖", en: "cover" },
+      { zh: "作文作品", en: "composition" },
+      { zh: "母牛，乳牛", en: "cow" },
+      { zh: "电脑，电子计算机", en: "computer" },
+      { zh: "坠落，冲撞", en: "crash" },
+      { zh: "音乐会，演奏会", en: "concert" },
+      { zh: "奶油；乳脂", en: "cream" },
+      { zh: "（汽车，电车上的）售票员，列车员", en: "conductor" },
+      { zh: "信用", en: "credit" },
+      { zh: "信心，自信", en: "confidence" },
+      { zh: "信用卡", en: "credit card" },
+      { zh: "有自信的，确信的", en: "confident" },
+      { zh: "庄稼，收成", en: "crop" },
+      { zh: "（常用复数）祝贺，庆贺", en: "congratulation" },
+      { zh: "十字形 (物)，十字记号；穿过，越过", en: "cross" },
+      { zh: "连接，相连，联系", en: "connect" },
+      { zh: "十字路口，交叉点", en: "crossing" },
+      { zh: "贡献", en: "contribution" },
+      { zh: "拥挤", en: "crowd" },
+      { zh: "烹调，煮，烧；炊事员，厨师", en: "cook" },
+      { zh: "哭，叫喊", en: "cry" },
+      { zh: "小甜饼", en: "cookie" },
+      { zh: "杯子", en: "cup" },
+      { zh: "凉快的；(俚语) 了不起", en: "cool" },
+      { zh: "碗橱，小橱 (柜)", en: "cupboard" },
+      { zh: "抄写；", en: "copy" },
+      { zh: "割，砍，切", en: "cut" },
+      { zh: "珊瑚", en: "coral" },
+      { zh: "砍倒", en: "cut down" },
+      { zh: "珊瑚礁", en: "coral reef" },
+      { zh: "（口语）爸爸，爹爹", en: "dad" },
+      { zh: "抄写；", en: "copy" },
+      { zh: "跳舞", en: "dance" },
+      { zh: "日期", en: "date" },
+      { zh: "微暗的，昏暗的", en: "dim" },
+      { zh: "女儿", en: "daughter" },
+      { zh: "餐厅", en: "dining room" },
+      { zh: "日，一天", en: "day" },
+      { zh: "正餐，晚餐", en: "dinner" },
+      { zh: "日；天", en: "day" },
+      { zh: "恐龙", en: "dinosaur" },
+      { zh: "白天", en: "daytime" },
+      { zh: "直接地", en: "directly" },
+      { zh: "死的", en: "dead" },
+      { zh: "脏的", en: "dirty" },
+      { zh: "聋的", en: "deaf" },
+      { zh: "消失", en: "disappear" },
+      { zh: "（口语）协议，交易", en: "deal" },
+      { zh: "消失", en: "disappearance" },
+      { zh: "亲爱的；可爱的；(表示惊讶等) 哎呀", en: "dear" },
+      { zh: "发现，发觉", en: "discover" },
+      { zh: "死，死亡", en: "death" },
+      { zh: "讨论，议论", en: "discuss" },
+      { zh: "十二月", en: "December" },
+      { zh: "讨论", en: "discussion" },
+      { zh: "决定，决心", en: "decide" },
+      { zh: "疾病", en: "disease" },
+      { zh: "决定", en: "decision" },
+      { zh: "一道菜，盘，碟", en: "dish" },
+      { zh: "装饰，修饰", en: "decorate" },
+      { zh: "陈列", en: "display" },
+      { zh: "深的", en: "deep" },
+      { zh: "妨碍，打扰", en: "disturb" },
+      { zh: "鹿（单复数同形）", en: "deer" },
+      { zh: "潜入 (水中)，跳水", en: "dive" },
+      { zh: "美味的，可口的", en: "delicious" },
+      { zh: "潜入水中的人，潜水员", en: "diver" },
+      { zh: "描写；叙述", en: "describe" },
+      { zh: "朗读，阅读", en: "do (some) reading" },
+      { zh: "沙漠", en: "desert" },
+      { zh: "做，干，行动", en: "do" },
+      { zh: "应得，值得...", en: "deserve" },
+      { zh: "做作业", en: "do homework" },
+      { zh: "书桌", en: "desk" },
+      { zh: "做早操", en: "do morning exercises" },
+      { zh: "侦探", en: "detective" },
+      { zh: "尽最大努力， 尽力", en: "do one's best" },
+      { zh: "发展，研制，开发", en: "develop" },
+      { zh: "在... 某方面干得好", en: "do well in" },
+      { zh: "图表", en: "diagram" },
+      { zh: "（构成否定句，疑问句的助动词）", en: "do" },
+      { zh: "日记", en: "diary" },
+      { zh: "医生", en: "doctor" },
+      { zh: "字典；词典", en: "dictionary" },
+      { zh: "公文，文件", en: "document" },
+      { zh: "死亡", en: "die" },
+      { zh: "狗", en: "dog" },
+      { zh: "不同，差异", en: "difference" },
+      { zh: "玩具娃娃", en: "doll" },
+      { zh: "不同，差异", en: "difference" },
+      { zh: "不同的", en: "different" },
+      { zh: "困难的，难的", en: "difficult" },
+      { zh: "挖，掘", en: "dig" },
+      { zh: "数字似的", en: "digital" },
+      { zh: "双重的，两倍 (的)，双倍的", en: "double" },
+      { zh: "向下", en: "down" },
+      { zh: "下载", en: "download" },
+      { zh: "（在）楼下，（往）楼下", en: "downstairs" },
+      { zh: "画；绘制", en: "draw" }
+    ];
+
+    // 全局变量
+    let remainingWords = [];
+    let reviewQueue = [];
+    let currentWords = [];
+    let gameCards = [];
+    let selectedCards = [];
+    let errorSet = new Set();
+    let roundCount = 0;
+    let passedRounds = 0;
+
+    /* ============ 辅助函数 ============ */
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    function initRemainingWords() {
+      if (remainingWords.length < 16) {
+        const reviewEnSet = new Set(reviewQueue.map(item => item.word.en));
+        remainingWords = shuffle(masterWords.filter(word => !reviewEnSet.has(word.en)));
+      }
+    }
+
+    // 将本局出错的单词加入 reviewQueue，安排在隔一轮后再出现
+    function addErrorsToReviewQueue() {
+      currentWords.forEach(word => {
+        if (errorSet.has(word.en)) {
+          let item = reviewQueue.find(item => item.word.en === word.en);
+          if (item) {
+            item.nextRound = roundCount + 2;
+          } else {
+            reviewQueue.push({ word: word, nextRound: roundCount + 2 });
+          }
+        }
+      });
+    }
+
+    // 当单词在游戏中正确匹配后，从 reviewQueue 中移除该单词
+    function removeFromReviewQueue(wordEn) {
+      reviewQueue = reviewQueue.filter(item => item.word.en !== wordEn);
+    }
+
+    function updatePassedCounter() {
+      document.getElementById("passed-counter").innerHTML = "通过: " + passedRounds;
+    }
+
+    /* ============ 模式函数 ============ */
+    function refreshLearningMode() {
+      roundCount++;
+      document.getElementById("mode-buttons").classList.remove("hide");
+      const reviewWords = reviewQueue.filter(item => item.nextRound <= roundCount).map(item => item.word);
+      initRemainingWords();
+      const numNeeded = 16 - reviewWords.length;
+      let newWords = [];
+      if (numNeeded > 0) {
+        newWords = remainingWords.splice(0, numNeeded);
+      }
+      currentWords = reviewWords.concat(newWords);
+      if (currentWords.length < 16) {
+        initRemainingWords();
+        currentWords = currentWords.concat(remainingWords.splice(0, 16 - currentWords.length));
+      }
+      document.getElementById("learning-mode").style.display = "block";
+      document.getElementById("game-mode").style.display = "none";
+      let html = '<div class="grid">';
+      currentWords.forEach(word => {
+        html += `<div class="card"><div>${word.zh} -</div><div>${word.en}</div></div>`;
+      });
+      html += '</div>';
+      document.getElementById("learning-mode").innerHTML = html;
+    }
+
+    function startGame() {
+      if (currentWords.length < 16) {
+        alert("请先刷新单词！");
+        return;
+      }
+      document.getElementById("learning-mode").style.display = "none";
+      document.getElementById("mode-buttons").classList.add("hide");
+      document.getElementById("game-mode").style.display = "block";
+      document.getElementById("error-display").style.display = "none";
+      selectedCards = [];
+      errorSet.clear();
+      gameCards = [];
+      currentWords.forEach(word => {
+        gameCards.push({ text: word.zh, type: "zh", pairKey: word.en, word: word });
+        gameCards.push({ text: word.en, type: "en", pairKey: word.en, word: word });
+      });
+      gameCards = shuffle(gameCards);
+      renderGameCards();
+    }
+
+    function renderGameCards() {
+      const gridDiv = document.getElementById("game-grid");
+      let html = '<div class="grid">';
+      gameCards.forEach((card, index) => {
+        let cardClass = card.matched ? "card matched" : "card";
+        html += `<div class="${cardClass}" id="card-${index}" onclick="selectGameCard(${index})">${card.text}</div>`;
+      });
+      html += '</div>';
+      document.getElementById("game-grid").innerHTML = html;
+      document.getElementById("back-btn-area").innerHTML = '<button onclick="backToLearningMode()">返回学习模式</button>';
+    }
+
+    function selectGameCard(index) {
+      const card = gameCards[index];
+      if (card.matched) return;
+      const cardDiv = document.getElementById("card-" + index);
+      if (selectedCards.includes(index)) return;
+      cardDiv.classList.add("selected");
+      selectedCards.push(index);
+      if (selectedCards.length === 2) {
+        setTimeout(checkSelectedCards, 500);
+      }
+    }
+
+    function checkSelectedCards() {
+      if (selectedCards.length < 2) return;
+      const [idx1, idx2] = selectedCards;
+      const card1 = gameCards[idx1];
+      const card2 = gameCards[idx2];
+      const cardDiv1 = document.getElementById("card-" + idx1);
+      const cardDiv2 = document.getElementById("card-" + idx2);
+      if (card1.pairKey === card2.pairKey && card1.type !== card2.type) {
+        card1.matched = true;
+        card2.matched = true;
+        cardDiv1.classList.add("matched");
+        cardDiv2.classList.add("matched");
+        removeFromReviewQueue(card1.pairKey);
+      } else {
+        errorSet.add(card1.pairKey);
+        errorSet.add(card2.pairKey);
+        cardDiv1.classList.remove("selected");
+        cardDiv2.classList.remove("selected");
+      }
+      selectedCards = [];
+      renderGameCards();
+      checkGameCompletion();
+    }
+
+    function checkGameCompletion() {
+      const unmatched = gameCards.filter(card => !card.matched);
+      if (unmatched.length === 0) {
+        passedRounds++;
+        updatePassedCounter();
+        showErrors();
+        addErrorsToReviewQueue();
+      }
+    }
+
+    function showErrors() {
+      if (errorSet.size > 0) {
+        let errorHTML = '<h2>待强化单词总结</h2><p>Congratulation! 请复习以下待强化的单词：</p><ul>';
+        currentWords.forEach(word => {
+          if (errorSet.has(word.en)) {
+            errorHTML += `<li>${word.zh} - ${word.en}</li>`;
+          }
+        });
+        errorHTML += '</ul>';
+        const errorDiv = document.getElementById("error-display");
+        errorDiv.innerHTML = errorHTML;
+        errorDiv.style.display = "block";
+      }
+    }
+
+    function backToLearningMode() {
+      document.getElementById("game-mode").style.display = "none";
+      document.getElementById("mode-buttons").classList.remove("hide");
+      refreshLearningMode();
+    }
+
+    window.onload = function() {
+      initRemainingWords();
+      refreshLearningMode();
+    };
+  </script>
+</body>
+</html>
+
+
+  <script>
+    
+  </script>
+</body>
+</html>
